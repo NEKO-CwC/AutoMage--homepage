@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import FlowNavigation from "@/components/svg/FlowNavigation";
 import PageParticles from "@/components/svg/PageParticles";
 import LenisProvider from "@/components/ui/LenisProvider";
+import CommandHeader from "@/components/ui/CommandHeader";
 import Footer from "@/components/sections/Footer";
 import "./globals.css";
 
@@ -43,6 +44,7 @@ export default function RootLayout({
               marginBottom: '100vh',
             }}
           >
+            <CommandHeader />
             <PageParticles />
             <FlowNavigation />
             {children}

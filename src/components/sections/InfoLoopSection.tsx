@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { gsap, ScrollTrigger, safeContext, motionPathTo } from '@/lib/gsap';
+import { gsap, safeContext } from '@/lib/gsap';
 
 /* ── Loop Nodes ── */
 interface LoopNodeData {
@@ -75,112 +75,72 @@ export default function InfoLoopSection() {
     const ctx = safeContext(() => {
       if (reduced) return;
 
-      // Pin the section
+      const trailEls = [trail1Ref.current, trail2Ref.current].filter(Boolean) as SVGCircleElement[];
+      const PARTICLE_DURATION = 6;
+
+      // Place a circle element at a progress fraction (0–1 → 0°–360°)
+      const placeAtProgress = (el: SVGCircleElement, p: number) => {
+        const angleDeg = Math.min(1, Math.max(0, p)) * 360;
+        const rad = ((angleDeg - 90) * Math.PI) / 180;
+        el.setAttribute('cx', String(CENTER + LOOP_RADIUS * Math.cos(rad)));
+        el.setAttribute('cy', String(CENTER + LOOP_RADIUS * Math.sin(rad)));
+      };
+
+      // Pin the section — scrub: true for instant scroll→progress mapping
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: section,
           pin: true,
-          scrub: 0.5,
+          pinSpacing: true,
+          scrub: true,
           start: 'top top',
           end: '+=2000',
         },
       });
 
-      // Light point travels along the circular path (native SVG, no MotionPathPlugin)
-      const pathEl = svg.querySelector<SVGGeometryElement>('[data-loop-circle]');
-      if (pathEl && particleRef.current) {
-        const particleProgress = { value: 0 };
-        const particleAnim = motionPathTo(
-          { x: 0, y: 0 } as any,
-          pathEl,
-          particleProgress,
-        );
-
-        if (particleAnim) {
-          // Initial position
-          particleAnim.update();
-          const initialX = (particleAnim as any).x ?? 0;
-          const initialY = (particleAnim as any).y ?? 0;
-
-          // Drive particle along path via progress
-          tl.fromTo(
-            particleProgress,
-            { value: 0 },
-            { value: 1, duration: 6, ease: 'none' },
-            0,
-          );
-
-          // On each timeline update, move particle to current path position
-          const particle = particleRef.current;
-          const svgPoint = svg.createSVGPoint();
-          const ctm = pathEl.getCTM();
-
-          tl.call(() => {
-            const point = pathEl.getPointAtLength(particleProgress.value * pathEl.getTotalLength());
-            if (ctm) {
-              svgPoint.x = point.x;
-              svgPoint.y = point.y;
-              const screen = svgPoint.matrixTransform(ctm);
-              particle.setAttribute('cx', String(screen.x));
-              particle.setAttribute('cy', String(screen.y));
-            } else {
-              particle.setAttribute('cx', String(point.x));
-              particle.setAttribute('cy', String(point.y));
-            }
-          }, undefined, 0);
-
-          // Repeat the call throughout the timeline
-          for (let step = 0.1; step <= 6; step += 0.1) {
-            tl.call(() => {
-              const point = pathEl.getPointAtLength(particleProgress.value * pathEl.getTotalLength());
-              if (ctm) {
-                svgPoint.x = point.x;
-                svgPoint.y = point.y;
-                const screen = svgPoint.matrixTransform(ctm);
-                particle.setAttribute('cx', String(screen.x));
-                particle.setAttribute('cy', String(screen.y));
-              } else {
-                particle.setAttribute('cx', String(point.x));
-                particle.setAttribute('cy', String(point.y));
-              }
-            }, undefined, step);
-          }
-
-          tl.fromTo(particleRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0);
-
-          // Trails follow with delay
-          [trail1Ref, trail2Ref].forEach((ref, i) => {
-            if (!ref.current) return;
-            const trail = ref.current;
-            const trailProgress = { value: 0 };
-
-            tl.fromTo(
-              trailProgress,
-              { value: 0 },
-              { value: 1, duration: 6, ease: 'none', delay: (i + 1) * 0.12 },
-              0,
-            );
-
-            for (let step = 0.1; step <= 6; step += 0.1) {
-              tl.call(() => {
-                const point = pathEl.getPointAtLength(trailProgress.value * pathEl.getTotalLength());
-                if (ctm) {
-                  svgPoint.x = point.x;
-                  svgPoint.y = point.y;
-                  const screen = svgPoint.matrixTransform(ctm);
-                  trail.setAttribute('cx', String(screen.x));
-                  trail.setAttribute('cy', String(screen.y));
-                } else {
-                  trail.setAttribute('cx', String(point.x));
-                  trail.setAttribute('cy', String(point.y));
-                }
-              }, undefined, step);
-            }
-
-            tl.fromTo(trail, { opacity: 0 }, { opacity: 0.3 - i * 0.1, duration: 0.3 }, (i + 1) * 0.12);
-          });
-        }
+      // Initialize particle + trail positions (React doesn't manage cx/cy/opacity)
+      if (particleRef.current) {
+        const startRad = ((-90) * Math.PI) / 180;
+        const startX = CENTER + LOOP_RADIUS * Math.cos(startRad);
+        const startY = CENTER + LOOP_RADIUS * Math.sin(startRad);
+        [particleRef.current, ...trailEls].forEach((el) => {
+          el.setAttribute('cx', String(startX));
+          el.setAttribute('cy', String(startY));
+          el.setAttribute('opacity', '0');
+        });
       }
+
+      // Drive particle position + opacity via rAF + scroll listener
+      // (gsap.ticker is broken in Turbopack, eventCallback doesn't fire during scrub)
+      let rafId = 0;
+      const updateParticle = () => {
+        rafId = 0;
+        if (!particleRef.current) return;
+        const scrubP = tl.progress(); // 0–1 from ScrollTrigger
+        const pTime = scrubP * (tl.duration() || 7);
+        const particleP = Math.min(1, pTime / PARTICLE_DURATION);
+
+        // Position
+        placeAtProgress(particleRef.current, particleP);
+        trailEls.forEach((trail, i) => {
+          placeAtProgress(trail, Math.max(0, particleP - (i + 1) * 0.02));
+        });
+
+        // Opacity: fade in during first 5%, full during middle, fade out during last 5%
+        const fadeIn = Math.min(1, scrubP / 0.05);
+        const fadeOut = Math.min(1, (1 - scrubP) / 0.05);
+        const opacity = Math.min(fadeIn, fadeOut);
+        particleRef.current.setAttribute('opacity', String(opacity));
+        trailEls.forEach((trail, i) => {
+          trail.setAttribute('opacity', String(opacity * (0.3 - i * 0.1)));
+        });
+      };
+      const scheduleUpdate = () => {
+        if (!rafId) rafId = requestAnimationFrame(updateParticle);
+      };
+      window.addEventListener('scroll', scheduleUpdate, { passive: true });
+      // Initial position
+      scheduleUpdate();
 
       // Node activation based on progress
       const nodeCount = LOOP_NODES.length;
@@ -250,6 +210,12 @@ export default function InfoLoopSection() {
       if (particleRef.current) {
         tl.to(particleRef.current, { opacity: 0, duration: 0.3 }, 6.8);
       }
+
+      // Clean up on unmount
+      return () => {
+        window.removeEventListener('scroll', scheduleUpdate);
+        if (rafId) cancelAnimationFrame(rafId);
+      };
     }, section);
 
     return () => ctx.revert();
@@ -277,7 +243,7 @@ export default function InfoLoopSection() {
       aria-label="组织信息回路模拟器"
       style={{
         background: 'var(--color-surface-deep)',
-        paddingTop: 'var(--space-section)',
+        paddingTop: 'calc(var(--space-section) + 60px)',
         paddingBottom: 'var(--space-section)',
         minHeight: '100vh',
       }}
@@ -403,32 +369,23 @@ export default function InfoLoopSection() {
                 );
               })}
 
-              {/* Light particle */}
+              {/* Light particle — cx/cy/opacity managed by GSAP (not React) to avoid re-render resets */}
               <circle
                 ref={particleRef}
-                cx={CENTER}
-                cy={CENTER - LOOP_RADIUS}
                 r={6}
                 fill="var(--color-loop-particle)"
-                opacity={0}
               />
 
-              {/* Trail circles */}
+              {/* Trail circles — same: GSAP-managed */}
               <circle
                 ref={trail1Ref}
-                cx={CENTER}
-                cy={CENTER - LOOP_RADIUS}
                 r={4}
                 fill="var(--color-loop-particle)"
-                opacity={0}
               />
               <circle
                 ref={trail2Ref}
-                cx={CENTER}
-                cy={CENTER - LOOP_RADIUS}
                 r={2}
                 fill="var(--color-loop-particle)"
-                opacity={0}
               />
             </svg>
           </div>
