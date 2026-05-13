@@ -1,0 +1,91 @@
+name: Setup DNS for Vercel
+
+on:
+  workflow_dispatch:
+
+env:
+  DOMAIN: automage.cn
+  VERCEL_CNAME: cname.vercel-dns.com
+  VERCEL_IP: 76.76.21.21
+
+jobs:
+  setup-dns:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Alibaba Cloud CLI
+        run: |
+          curl -fsSL https://aliyuncli.alicdn.com/aliyun-cli-linux-latest-amd64.tgz -o aliyun-cli.tgz
+          tar -xzf aliyun-cli.tgz
+          sudo mv aliyun /usr/local/bin/aliyun
+          aliyun version
+
+      - name: Configure CLI credentials
+        run: |
+          aliyun configure set \
+            --mode AK \
+            --access-key-id "${{ secrets.DOMAIN_ALIYUN_ACCESS_KEY_ID }}" \
+            --access-key-secret "${{ secrets.DOMAIN_ALIYUN_ACCESS_KEY_SECRET }}" \
+            --region cn-hangzhou
+
+      - name: Set root domain A record (@ -> 76.76.21.21)
+        run: |
+          EXISTING=$(aliyun alidns DescribeDomainRecords \
+            --DomainName "$DOMAIN" \
+            --RRKeyWord "@" \
+            --TypeKeyWord "A" \
+            --region cn-hangzhou 2>/dev/null)
+
+          RECORD_ID=$(echo "$EXISTING" | jq -r '.DomainRecords.Record[0].RecordId // empty')
+
+          if [ -n "$RECORD_ID" ]; then
+            echo "Updating existing A record: $RECORD_ID"
+            aliyun alidns UpdateDomainRecord \
+              --RecordId "$RECORD_ID" \
+              --RR "@" \
+              --Type "A" \
+              --Value "$VERCEL_IP" \
+              --region cn-hangzhou
+          else
+            echo "Creating new A record"
+            aliyun alidns AddDomainRecord \
+              --DomainName "$DOMAIN" \
+              --RR "@" \
+              --Type "A" \
+              --Value "$VERCEL_IP" \
+              --region cn-hangzhou
+          fi
+
+      - name: Set www CNAME record (www -> cname.vercel-dns.com)
+        run: |
+          EXISTING=$(aliyun alidns DescribeDomainRecords \
+            --DomainName "$DOMAIN" \
+            --RRKeyWord "www" \
+            --TypeKeyWord "CNAME" \
+            --region cn-hangzhou 2>/dev/null)
+
+          RECORD_ID=$(echo "$EXISTING" | jq -r '.DomainRecords.Record[0].RecordId // empty')
+
+          if [ -n "$RECORD_ID" ]; then
+            echo "Updating existing CNAME record: $RECORD_ID"
+            aliyun alidns UpdateDomainRecord \
+              --RecordId "$RECORD_ID" \
+              --RR "www" \
+              --Type "CNAME" \
+              --Value "$VERCEL_CNAME" \
+              --region cn-hangzhou
+          else
+            echo "Creating new CNAME record"
+            aliyun alidns AddDomainRecord \
+              --DomainName "$DOMAIN" \
+              --RR "www" \
+              --Type "CNAME" \
+              --Value "$VERCEL_CNAME" \
+              --region cn-hangzhou
+          fi
+
+      - name: Verify DNS records
+        run: |
+          aliyun alidns DescribeDomainRecords \
+            --DomainName "$DOMAIN" \
+            --region cn-hangzhou | jq '.DomainRecords.Record[] | {RR, Type, Value, Status}'

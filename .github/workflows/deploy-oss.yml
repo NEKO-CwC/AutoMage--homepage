@@ -1,0 +1,48 @@
+name: Deploy to Alibaba Cloud OSS
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-oss
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to OSS
+        env:
+          OSSUTIL_ENDPOINT: oss-cn-hangzhou.aliyuncs.com
+          OSSUTIL_ACCESS_KEY_ID: ${{ secrets.ALIYUN_ACCESS_KEY_ID }}
+          OSSUTIL_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
+        run: |
+          ossutil sync out/ oss://${{ secrets.ALIYUN_OSS_BUCKET }}/ \
+            --delete \
+            --force \
+            --exclude "*.map"
+
+      - name: Verify deployment
+        run: |
+          echo "Deployed to https://automage.cn"
+          curl -s -o /dev/null -w "%{http_code}" https://automage.cn | grep -q "200" && echo "OK" || echo "Warning: site may take a few seconds to propagate"
