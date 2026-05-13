@@ -1,0 +1,185 @@
+@import "tailwindcss";
+
+:root {
+  /* ── Brand ── */
+  --color-brand-primary: #1E3A5F;
+  --color-brand-accent: #3B82F6;
+  --color-brand-accent-alt: #6366F1;
+  --color-brand-cyan: #38BDF8;
+
+  /* ── Text ── */
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #334155;
+  --color-text-tertiary: #64748B;
+  --color-text-on-dark: #F1F5F9;
+  --color-text-on-dark-muted: #94A3B8;
+
+  /* ── Surface ── */
+  --color-surface-page: #FAFBFC;
+  --color-surface-card: #FFFFFF;
+  --color-surface-elevated: #F1F5F9;
+  --color-surface-tinted: #F0F4FF;
+  --color-surface-dark: #0F172A;
+  --color-surface-deep: #0B1628;
+
+  /* ── Border ── */
+  --color-border-default: rgba(0, 0, 0, 0.06);
+  --color-border-strong: rgba(0, 0, 0, 0.12);
+  --color-border-brand: rgba(59, 130, 246, 0.3);
+
+  /* ── Loop Rail ── */
+  --color-loop-node-inactive: rgba(59, 130, 246, 0.15);
+  --color-loop-node-active: #3B82F6;
+  --color-loop-node-glow: rgba(59, 130, 246, 0.3);
+  --color-loop-path: rgba(59, 130, 246, 0.10);
+  --color-loop-path-active: rgba(59, 130, 246, 0.4);
+  --color-loop-particle: #38BDF8;
+  --color-loop-particle-trail: rgba(59, 130, 246, 0.3);
+
+  /* ── Signal Colors ── */
+  --color-signal-normal: #3B82F6;
+  --color-signal-warning: #F59E0B;
+  --color-signal-risk: #EF4444;
+  --color-signal-success: #22C55E;
+
+  /* ── Gate Colors ── */
+  --color-gate-ai: #3B82F6;
+  --color-gate-human: #1E3A5F;
+  --color-gate-unlocked: #22C55E;
+  --color-gate-locked: rgba(100, 116, 139, 0.3);
+
+  /* ── Shadow ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
+  --shadow-node-glow: 0 0 12px rgba(59, 130, 246, 0.3);
+
+  /* ── Typography ── */
+  --font-sans: 'Inter', 'HarmonyOS Sans SC', 'Noto Sans SC', 'Source Han Sans SC', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-console: var(--font-jetbrains-mono), 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* ── Spacing ── */
+  --space-section: 140px;
+  --space-block: 64px;
+  --space-element: 24px;
+
+  /* ── Radius ── */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* ── Motion ── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+
+  /* ── Component Tokens ── */
+  --ticker-layer1-speed: 35s;
+  --ticker-layer2-speed: 28s;
+  --ticker-mask-fade: 12%;
+  --simulator-inspector-width: 320px;
+  --faq-question-panel-width: 360px;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-surface-page);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Hide default scrollbar ── */
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── AutoMage Glyph System Animations ── */
+@keyframes draw-path {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes node-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes node-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@keyframes compress-in {
+  0% { transform: translateX(0); opacity: 0.35; }
+  45% { transform: translateX(8px); opacity: 1; }
+  100% { transform: translateX(0); opacity: 0.35; }
+}
+
+@keyframes audit-node {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes scan-gate {
+  0% { transform: translateY(-8px); opacity: 0.2; }
+  50% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(8px); opacity: 0.2; }
+}
+
+@keyframes finger-draw {
+  0% { stroke-dashoffset: 42; opacity: 0.2; }
+  45% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0.4; }
+}
+
+@keyframes check-draw-loop {
+  0%, 45% { stroke-dashoffset: 18; opacity: 0; }
+  65% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0.5; }
+}
+
+@keyframes ledger-write {
+  0% { stroke-dashoffset: 20; opacity: 0.2; }
+  45% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0.4; }
+}
+
+@keyframes ledger-seal {
+  0%, 45% { opacity: 0.3; }
+  60% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+@keyframes boundary-stop {
+  0% { transform: translateX(-6px); opacity: 0.4; }
+  45% { transform: translateX(8px); opacity: 1; }
+  60% { transform: translateX(8px); opacity: 1; }
+  100% { transform: translateX(-6px); opacity: 0.4; }
+}
+
+@keyframes signal-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
