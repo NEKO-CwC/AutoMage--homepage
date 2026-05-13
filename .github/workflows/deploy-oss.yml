@@ -31,13 +31,23 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Deploy to OSS
-        env:
-          OSSUTIL_ENDPOINT: oss-cn-hangzhou.aliyuncs.com
-          OSSUTIL_ACCESS_KEY_ID: ${{ secrets.ALIYUN_ACCESS_KEY_ID }}
-          OSSUTIL_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
+      - name: Install Alibaba Cloud CLI
         run: |
-          ossutil sync out/ oss://${{ secrets.ALIYUN_OSS_BUCKET }}/ \
+          curl -fsSL https://aliyuncli.alicdn.com/aliyun-cli-linux-latest-amd64.tgz -o aliyun-cli.tgz
+          tar -xzf aliyun-cli.tgz
+          sudo mv aliyun /usr/local/bin/aliyun
+
+      - name: Configure CLI credentials
+        run: |
+          aliyun configure set \
+            --mode AK \
+            --access-key-id "${{ secrets.ALIYUN_ACCESS_KEY_ID }}" \
+            --access-key-secret "${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}" \
+            --region cn-hangzhou
+
+      - name: Deploy to OSS
+        run: |
+          aliyun oss sync out/ oss://${{ secrets.ALIYUN_OSS_BUCKET }}/ \
             --delete \
             --force \
             --exclude "*.map"
